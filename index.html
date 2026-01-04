@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BBC World Service Streamer</title>
+    <link rel="manifest" href="data:application/manifest+json,{'name':'BBC Streamer','short_name':'BBC','start_url':'.','display':'standalone','background_color':'#000000'}">
+    
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            color: #bbbbbb;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Large "No-Frills" Play Button */
+        #playButton {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 4px solid #ffffff;
+            background: transparent;
+            color: white;
+            font-size: 3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+        }
+
+        #playButton:active {
+            transform: scale(0.95);
+            background-color: #333;
+        }
+
+        /* Buffer/Status Indicator */
+        #status {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .offline-notice {
+            color: #ff4444;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>BBC World Service</h1>
+
+    <button id="playButton" aria-label="Play">▶</button>
+    
+    <div id="status">READY</div>
+    <div id="offlineNotice" class="offline-notice">OFFLINE - CHECK CONNECTION</div>
+
+    <audio id="audioPlayer">
+        <source src="https://stream.live.vc.bbcmedia.co.uk/bbc_world_service" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        const audio = document.getElementById('audioPlayer');
+        const btn = document.getElementById('playButton');
+        const status = document.getElementById('status');
+        const offlineNotice = document.getElementById('offlineNotice');
+
+        // Play/Pause Logic
+        btn.onclick = () => {
+            if (audio.paused) {
+                audio.play();
+                btn.textContent = '⏸';
+                status.textContent = 'CONNECTING...';
+            } else {
+                audio.pause();
+                btn.textContent = '▶';
+                status.textContent = 'PAUSED';
+            }
+        };
+
+        // Network Status Logic
+        window.addEventListener('online', () => offlineNotice.style.display = 'none');
+        window.addEventListener('offline', () => offlineNotice.style.display = 'block');
+
+        // Audio Event Listeners
+        audio.onplaying = () => status.textContent = 'LIVE';
+        audio.onwaiting = () => status.textContent = 'BUFFERING...';
+        audio.onerror = () => status.textContent = 'STREAM ERROR';
+
+        // Service Worker for Offline Launch
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => {
+                    e.waitUntil(caches.open('bbc-v1').then(cache => cache.addAll(['/'])));
+                });
+                self.addEventListener('fetch', e => {
+                    e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+                });
+            `;
+            const blob = new Blob([swCode], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob));
+        }
+    </script>
+</body>
+</html>
